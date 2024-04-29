@@ -1,50 +1,48 @@
-# Crop dataset containing soil type, temperature, and pH level for different crops
-crop_database = {
-    "wheat": {"soil_type": "loamy", "temperature": "15-25°C", "ph_level": 6.0},
-    "rice": {"soil_type": "clayey", "temperature": "20-35°C", "ph_level": 5.5},
-    "tomato": {"soil_type": "sandy loam", "temperature": "20-30°C", "ph_level": 6.0},
-    # Add more crops and their details as needed
-}
+import pandas as pd
 
-# Function to recommend crops based on user input
-def recommend_crops(location, soil_type, climate):
-    recommended_crops = []
-    for crop, details in crop_database.items():
-        if details["soil_type"] == soil_type and details["temperature"] in climate:
-            recommended_crops.append(crop)
-    return recommended_crops
+# Read the CSV file
+df = pd.read_csv('crop_prediction.csv')
 
-# Function to suggest soil adjustments for a specific crop
-def suggest_soil_adjustments(crop):
-    if crop in crop_database:
-        details = crop_database[crop]
-        # Sample soil adjustment suggestions based on crop's optimal conditions
-        soil_adjustments = f"For {crop}, it's recommended to maintain pH level around {details['ph_level']}, and ensure adequate {details['soil_type']} soil type."
-        return soil_adjustments
-    else:
-        return "Crop not found in the database."
+# Function to calculate Euclidean distance between two points
+def euclidean_distance(x1, x2):
+    return sum((x1[i] - x2[i])**2 for i in range(len(x1))) ** 0.5
 
-# Main function to interact with the user
-def main():
-    print("Welcome to Crop Recommendation Bot!")
-    location = input("Please enter your location: ")
-    soil_type = input("Please enter your soil type (e.g., loamy, clayey, sandy loam): ")
-    climate = input("Please enter your climate temperature range (e.g., 20-30°C): ")
+# Function to find the closest row in the dataset
+def find_closest_row(input_values, dataset):
+    closest_row = None
+    min_distance = float('inf')
 
-    recommended_crops = recommend_crops(location, soil_type, climate)
-    if recommended_crops:
-        print("Based on your location, soil type, and climate, we recommend the following crops:")
-        for crop in recommended_crops:
-            print("- " + crop)
-        
-        specific_crop = input("Would you like information on growing a specific crop? If yes, please enter the crop name: ")
-        if specific_crop.lower() in recommended_crops:
-            print("Here are some soil adjustment suggestions for growing " + specific_crop + ":")
-            print(suggest_soil_adjustments(specific_crop.lower()))
-        else:
-            print("Sorry, we don't have information on growing " + specific_crop + " in your area.")
-    else:
-        print("Sorry, we couldn't find any suitable crops for your location, soil type, and climate.")
+    for index, row in dataset.iterrows():
+        row_values = row[:-1]  # Exclude the last column which is the label
+        distance = euclidean_distance(input_values, row_values)
+        if distance < min_distance:
+            min_distance = distance
+            closest_row = row
 
-if __name__ == "__main__":
-    main()
+    return closest_row
+
+# Take 7 integer inputs
+print("Enter the values for n, p, k, temperature, humidity, pH, and rainfall:")
+input_values = []
+for _ in range(7):
+    value = int(input())
+    input_values.append(value)
+
+# Find the closest row in the dataset
+closest_row = find_closest_row(input_values, df)
+
+# Check if exact match found
+exact_match = True
+for i in range(7):
+    if input_values[i] != closest_row[i]:
+        exact_match = False
+        break
+
+# Print the result
+if exact_match:
+    print("Exact match found!")
+    print("Label:", closest_row.iloc[-1])
+else:
+    print("Closest row found:")
+    print(closest_row)
+
