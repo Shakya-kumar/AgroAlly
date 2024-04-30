@@ -1,7 +1,7 @@
 import pandas as pd
-
+import numpy as np
 # Read the CSV file
-df = pd.read_csv('crop_prediction.csv')
+df = pd.read_csv('Crop_dataset.csv')
 
 # Function to calculate Euclidean distance between two points
 def euclidean_distance(x1, x2):
@@ -23,8 +23,10 @@ def find_closest_row(input_values, dataset):
 
 # Take 7 integer inputs
 print("Enter the values for n, p, k, temperature, humidity, pH, and rainfall:")
-input_values = []
-for _ in range(7):
+i=np.array(["nitrigen composition (n)"," Phosphorus content (p)","potassium content (k)"," temperature","humidity", "pH","rainfall"])
+input_values=[]
+for q in range(7):
+    print("enter the value of",i[q]," : ")
     value = int(input())
     input_values.append(value)
 
@@ -45,4 +47,3 @@ if exact_match:
 else:
     print("Closest row found:")
     print(closest_row)
-
