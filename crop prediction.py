@@ -1,5 +1,5 @@
 import pandas as pd
-import numpy as np
+import numpy as np  
 
 # Read the CSV file
 df = pd.read_csv('Crop_dataset.csv')
