@@ -1,54 +1,59 @@
+print("----------------------------------------------crop prediction-------------------------------------------")
 import pandas as pd
-import numpy as np  
+import numpy as np
 
-# Read the CSV file
+# Read the CSV file (replace 'Crop_dataset.csv' with the correct file path)
 df = pd.read_csv('Crop_dataset.csv')
 
 # Function to calculate Euclidean distance between two points
 def euclidean_distance(x1, x2):
-    return np.sqrt(np.sum((x1 - x2)**2))
+    return np.linalg.norm(x1 - x2)
 
 # Function to find the closest row in the dataset
 def find_closest_row(input_values, dataset):
-    closest_row = None
-    min_distance = float('inf')
-
-    for index, row in dataset.iterrows():
-        row_values = row[:-1]  # Exclude the last column which is the label
-        distance = euclidean_distance(input_values, row_values)
-        if distance < min_distance:
-            min_distance = distance
-            closest_row = row
-
+    distances = dataset.iloc[:, :-2].apply(lambda row: euclidean_distance(input_values, row), axis=1)
+    closest_index = distances.idxmin()
+    closest_row = dataset.loc[closest_index]
     return closest_row
 
-# Take 7 integer inputs
-print("Enter the values for nitrogen composition (N), Phosphorus content (P), potassium content (K)")
-print("temperature(in degree Celcius),humidity,PH,rainfall (in cm)")
-attributes = ["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]
+# Dictionary to store SI unit information for each attribute
+unit_info = {
+    "N": "kg/ha",
+    "P": "kg/ha",
+    "K": "kg/ha",
+    "temperature": "°C",
+    "humidity": "%",
+    "ph": "pH (1-14)",
+    "rainfall": "mm"
+}
 
+# Take input values in SI units
+print("Enter the values for nitrogen composition (N), Phosphorus content (P), potassium content (K),")
+print("temperature (in degree Celsius), humidity (%), pH (in the range of 1 to 14), rainfall (in mm)")
+
+attributes = ["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]
 input_values = []
+
+# Collect user input and convert to appropriate data type
 for attr in attributes:
-    value = int(input(f"Enter the value of {attr}: "))
-    input_values.append(value)
+    unit = unit_info[attr]
+    while True:
+        try:
+            value = float(input(f"Enter the value of {attr} ({unit}): "))
+            if attr == "ph" and not (1 <= value <= 14):
+                print("Error: pH value must be between 1 and 14.")
+                continue
+            input_values.append(value)
+            break
+        except ValueError:
+            print("Error: Invalid input. Please enter a valid number.")
 
 # Find the closest row in the dataset
-closest_row = find_closest_row(input_values, df)
-
-# Check if exact match found
-exact_match = True
-for i in range(7):
-    if input_values[i] != closest_row[i]:
-        exact_match = False
-        break
+closest_row = find_closest_row(np.array(input_values), df)
 
 # Print the result
-if exact_match:
-    print("Exact match found!")
-    print("Label:", closest_row.iloc[-1])
-else:
-    print("Closest row found:")
-    print(closest_row)
+print("\nClosest row found:")
+print(closest_row)
 
 # Ask if user wants crop suggestion
 response = input("Do you want to grow a specific crop? (yes/no): ").lower()
@@ -57,10 +62,12 @@ if response == "yes":
     # Prompt user to enter the crop name
     crop_name = input("Enter the crop name you want to grow: ")
 
-    # Check if the crop name exists in the dataset
-    if crop_name in df['label'].values:
+    # Check if the crop name exists in the dataset (in either label or Indian_name)
+    if crop_name in df['label'].values or crop_name in df['Indian_name'].values:
         # Filter dataset to get rows corresponding to the selected crop
-        crop_data = df[df['label'] == crop_name]
+        crop_data = df[df['label'] == crop_name]  # Filter by label
+        if crop_data.empty:
+            crop_data = df[df['Indian_name'] == crop_name]  # Filter by Indian_name if label doesn't match
 
         # Calculate average values for each attribute
         avg_values = crop_data[attributes].mean().values
@@ -69,17 +76,18 @@ if response == "yes":
         adjustments = avg_values - input_values
 
         # Print adjustments needed for each attribute
-        print(f"To grow {crop_name}, you need the following adjustments:")
+        print(f"\nTo grow {crop_name}, you need the following adjustments:")
         for attr, adjustment in zip(attributes, adjustments):
+            unit = unit_info[attr]
             current_value = input_values[attributes.index(attr)]
             required_value = avg_values[attributes.index(attr)]
 
             if adjustment > 0:
-                print(f"Your {attr} is {current_value}, but {crop_name} requires an average of {required_value}. "
-                      f"You need to boost {attr} by {adjustment:.2f}.")
+                print(f"Your {attr} is {current_value:.2f} {unit}, but {crop_name} requires an average of {required_value:.2f} {unit}.")
+                print(f"You need to boost {attr} by {abs(adjustment):.2f} {unit}.")
             elif adjustment < 0:
-                print(f"Your {attr} is {current_value}, but {crop_name} requires an average of {required_value}. "
-                      f"You have excess {attr} by {-adjustment:.2f}.")
+                print(f"Your {attr} is {current_value:.2f} {unit}, but {crop_name} requires an average of {required_value:.2f} {unit}.")
+                print(f"You have excess {attr} by {abs(adjustment):.2f} {unit}.")
             else:
                 print(f"Your {attr} is already optimal for {crop_name}.")
 
