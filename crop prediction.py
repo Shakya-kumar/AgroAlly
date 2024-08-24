@@ -1,4 +1,4 @@
-print("----------------------------------------------crop prediction-------------------------------------------")
+print("---------------------------------------------- Crop Prediction -------------------------------------------")
 import pandas as pd
 import numpy as np
 
@@ -27,6 +27,44 @@ unit_info = {
     "rainfall": "mm"
 }
 
+# Dictionary to map English crop names to Hindi names
+crop_name_mapping = {
+    "rice": "चावल",
+    "maize": "मक्का",
+    "chickpea": "चना",
+    "kidneybeans": "राजमा",
+    "pigeonpeas": "तूर दाल",
+    "mothbeans": "मोत दाल",
+    "mungbean": "मूंग",
+    "blackgram": "काला चना",
+    "lentil": "दाल",
+    "pomegranate": "अनार",
+    "banana": "केला",
+    "mango": "आम",
+    "grapes": "अंगूर",
+    "watermelon": "तरबूज",
+    "muskmelon": "खरबूजा",
+    "apple": "सेब",
+    "orange": "संतरा",
+    "papaya": "पपीता",
+    "coconut": "नारियल",
+    "cotton": "रुई",
+    "jute": "जूट",
+    "coffee": "कॉफी",
+    "wheat": "गेहूं",
+    "sugarcane": "गन्ना",
+    "corn": "भुट्टा",
+    "groundnut": "मूँगफली",
+    "tea": "चाय",
+    "rubber": "रबड़",
+    "turmeric": "हल्दी",
+    "pepper": "काली मिर्च",
+    "tomato": "टमाटर"
+}
+
+# Reverse mapping from Hindi to English
+hindi_to_english = {v: k for k, v in crop_name_mapping.items()}
+
 # Take input values in SI units
 print("Enter the values for nitrogen composition (N), Phosphorus content (P), potassium content (K),")
 print("temperature (in degree Celsius), humidity (%), pH (in the range of 1 to 14), rainfall (in mm)")
@@ -50,9 +88,11 @@ for attr in attributes:
 
 # Find the closest row in the dataset
 closest_row = find_closest_row(np.array(input_values), df)
+closest_crop = closest_row['label']
+hindi_name = crop_name_mapping.get(closest_crop, "Unknown")
 
 # Print the result
-print("\nClosest row found:")
+print(f"\nBased on your input, your soil is suitable to grow {closest_crop} ({hindi_name}).")
 print(closest_row)
 
 # Ask if user wants crop suggestion
@@ -60,37 +100,40 @@ response = input("Do you want to grow a specific crop? (yes/no): ").lower()
 
 if response == "yes":
     # Prompt user to enter the crop name
-    crop_name = input("Enter the crop name you want to grow: ")
+    crop_name = input("Enter the crop name you want to grow (in English or Hindi): ").strip().lower()
 
-    # Check if the crop name exists in the dataset (in either label or Indian_name)
-    if crop_name in df['label'].values or crop_name in df['Indian_name'].values:
-        # Filter dataset to get rows corresponding to the selected crop
-        crop_data = df[df['label'] == crop_name]  # Filter by label
-        if crop_data.empty:
-            crop_data = df[df['Indian_name'] == crop_name]  # Filter by Indian_name if label doesn't match
+    # Check if the crop name exists in the dataset in either language
+    crop_name_english = crop_name_mapping.get(crop_name, None)
+    crop_name_hindi = hindi_to_english.get(crop_name, None)
+
+    if crop_name_english or crop_name_hindi:
+        selected_crop = crop_name_english if crop_name_english else crop_name_hindi
+        crop_data = df[df['label'].str.lower() == selected_crop]
 
         # Calculate average values for each attribute
         avg_values = crop_data[attributes].mean().values
 
         # Calculate adjustments needed based on the differences
-        adjustments = avg_values - input_values
+        adjustments = avg_values - np.array(input_values)
+
+        # Get the Hindi name for the selected crop
+        hindi_name = crop_name_mapping.get(selected_crop, "Unknown")
 
         # Print adjustments needed for each attribute
-        print(f"\nTo grow {crop_name}, you need the following adjustments:")
+        print(f"\nTo grow {selected_crop} ({hindi_name}), you need the following adjustments:")
         for attr, adjustment in zip(attributes, adjustments):
             unit = unit_info[attr]
             current_value = input_values[attributes.index(attr)]
             required_value = avg_values[attributes.index(attr)]
 
             if adjustment > 0:
-                print(f"Your {attr} is {current_value:.2f} {unit}, but {crop_name} requires an average of {required_value:.2f} {unit}.")
+                print(f"Your {attr} is {current_value:.2f} {unit}, but {selected_crop} ({hindi_name}) requires an average of {required_value:.2f} {unit}.")
                 print(f"You need to boost {attr} by {abs(adjustment):.2f} {unit}.")
             elif adjustment < 0:
-                print(f"Your {attr} is {current_value:.2f} {unit}, but {crop_name} requires an average of {required_value:.2f} {unit}.")
+                print(f"Your {attr} is {current_value:.2f} {unit}, but {selected_crop} ({hindi_name}) requires an average of {required_value:.2f} {unit}.")
                 print(f"You have excess {attr} by {abs(adjustment):.2f} {unit}.")
             else:
-                print(f"Your {attr} is already optimal for {crop_name}.")
-
+                print(f"Your {attr} is already optimal for {selected_crop} ({hindi_name}).")
     else:
         print(f"The crop '{crop_name}' is not available in the dataset.")
 
